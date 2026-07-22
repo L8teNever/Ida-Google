@@ -28,7 +28,13 @@ from mcp.server.fastmcp import Image
 
 from app.google_client import GoogleApiClient, confirm_or_explain
 
-SCOPES = ["https://www.googleapis.com/auth/gmail.modify"]
+SCOPES = [
+    "https://www.googleapis.com/auth/gmail.modify",
+    # Nur zum LESEN der konfigurierten Send-As-Adressen (google_mail_absender_liste)
+    # -- das Einrichten neuer Send-As-Aliase selbst passiert weiterhin nur in
+    # den Gmail-Einstellungen direkt, nicht ueber dieses Tool.
+    "https://www.googleapis.com/auth/gmail.settings.basic",
+]
 
 _BASE = "https://gmail.googleapis.com/gmail/v1/users/me"
 
@@ -77,11 +83,16 @@ def _find_attachments(payload: dict, gefunden: list[dict] | None = None) -> list
 
 def _build_raw_message(
     an: str, betreff: str, text: str, cc: str, bcc: str, anhaenge: list[dict] | None,
-    in_reply_to: str = "", references: str = "",
+    in_reply_to: str = "", references: str = "", von: str = "",
 ) -> str:
     msg = EmailMessage()
     msg["To"] = an
     msg["Subject"] = betreff
+    if von:
+        # Muss eine bei Gmail bereits als "Senden als" verifizierte Adresse
+        # sein (siehe google_mail_absender_liste) -- sonst ignoriert Gmail
+        # den Header und nimmt die Hauptadresse des Kontos.
+        msg["From"] = von
     if cc:
         msg["Cc"] = cc
     if bcc:
@@ -185,28 +196,33 @@ def register_tools(mcp, client: GoogleApiClient) -> None:
 
     @mcp.tool()
     def google_mail_senden(
-        an: str, betreff: str, text: str, cc: str = "", bcc: str = "", anhaenge: list[dict] | None = None
+        an: str, betreff: str, text: str, cc: str = "", bcc: str = "",
+        anhaenge: list[dict] | None = None, von: str = "",
     ) -> dict:
         """Sendet eine neue E-Mail (kein Reply -- dafuer google_mail_antworten).
 
         an/cc/bcc: E-Mail-Adressen, mehrere durch Komma getrennt.
         anhaenge: optionale Liste von {"dateiname": str, "mimetyp": str,
         "inhalt_base64": str}.
+        von: optionale Absenderadresse -- muss eine bei Gmail bereits
+        verifizierte "Senden als"-Adresse sein (siehe
+        google_mail_absender_liste). Leer = Hauptadresse des Kontos.
         """
-        raw = _build_raw_message(an, betreff, text, cc, bcc, anhaenge)
+        raw = _build_raw_message(an, betreff, text, cc, bcc, anhaenge, von=von)
         data = client.request("POST", f"{_BASE}/messages/send", json_body={"raw": raw})
         return {"gesendet": True, "message_id": data.get("id", "")}
 
     @mcp.tool()
     def google_mail_entwurf_erstellen(
-        an: str = "", betreff: str = "", text: str = "", cc: str = "", bcc: str = ""
+        an: str = "", betreff: str = "", text: str = "", cc: str = "", bcc: str = "", von: str = "",
     ) -> dict:
         """Legt einen Mail-Entwurf an, OHNE ihn zu senden -- zum spaeteren
         Fertigstellen/Senden (google_mail_entwurf_senden) oder als reine Notiz.
 
-        Alle Felder optional (auch ein leerer Entwurf ist gueltig).
+        Alle Felder optional (auch ein leerer Entwurf ist gueltig). von:
+        siehe google_mail_senden (muss verifizierte "Senden als"-Adresse sein).
         """
-        raw = _build_raw_message(an, betreff, text, cc, bcc, None)
+        raw = _build_raw_message(an, betreff, text, cc, bcc, None, von=von)
         data = client.request("POST", f"{_BASE}/drafts", json_body={"message": {"raw": raw}})
         return {"draft_id": data.get("id", "")}
 
@@ -245,13 +261,14 @@ def register_tools(mcp, client: GoogleApiClient) -> None:
         return {"gesendet": True, "message_id": data.get("id", "")}
 
     @mcp.tool()
-    def google_mail_antworten(message_id: str, text: str, an_alle: bool = False) -> dict:
+    def google_mail_antworten(message_id: str, text: str, an_alle: bool = False, von: str = "") -> dict:
         """Antwortet innerhalb eines bestehenden Mail-Threads (mit korrekten
         In-Reply-To/References-Kopfzeilen, erscheint beim Empfaenger als
         Antwort in derselben Unterhaltung statt als neue Mail).
 
         message_id: aus google_mails_suchen()/google_mail_lesen().
         an_alle: bei True gehen auch die urspruenglichen CC-Empfaenger mit.
+        von: siehe google_mail_senden (muss verifizierte "Senden als"-Adresse sein).
         """
         original = client.request(
             "GET",
@@ -271,6 +288,7 @@ def register_tools(mcp, client: GoogleApiClient) -> None:
             bcc="",
             anhaenge=None,
             in_reply_to=_header(headers, "Message-ID"),
+            von=von,
         )
         data = client.request(
             "POST",
@@ -278,6 +296,24 @@ def register_tools(mcp, client: GoogleApiClient) -> None:
             json_body={"raw": raw, "threadId": original.get("threadId")},
         )
         return {"gesendet": True, "message_id": data.get("id", "")}
+
+    @mcp.tool()
+    def google_mail_absender_liste() -> list[dict]:
+        """Gibt alle bei Gmail konfigurierten "Senden als"-Adressen zurueck
+        (Haupt-Adresse + eigene Aliase). Nur verifizierte Adressen (siehe
+        Feld "verifiziert") koennen tatsaechlich als von-Parameter bei
+        google_mail_senden/google_mail_antworten/google_mail_entwurf_erstellen
+        benutzt werden."""
+        data = client.request("GET", f"{_BASE}/settings/sendAs")
+        return [
+            {
+                "email": a.get("sendAsEmail", ""),
+                "anzeigename": a.get("displayName", ""),
+                "haupt_adresse": bool(a.get("isPrimary")),
+                "verifiziert": a.get("verificationStatus", "") == "accepted",
+            }
+            for a in (data or {}).get("sendAs", [])
+        ]
 
     @mcp.tool()
     def google_mail_labels_liste() -> list[dict]:

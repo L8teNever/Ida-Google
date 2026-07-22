@@ -139,7 +139,7 @@ claude.ai -> Einstellungen -> Connectors -> Add custom connector -> als URL:
 https://google.deine-domain.de/mcp?token=<MCP_AUTH_TOKEN>
 ```
 
-## Verfügbare MCP-Tools (54)
+## Verfügbare MCP-Tools (55)
 
 Vollständige Parameter/Docstrings direkt im Code (`app/services/*.py`) --
 hier nur eine Übersicht nach Dienst gruppiert.
@@ -150,7 +150,7 @@ hier nur eine Übersicht nach Dienst gruppiert.
 | **Tasks** | 5 | Listen/Aufgaben lesen, anlegen, erledigt markieren, löschen |
 | **Kontakte** | 5 | Lesen, anlegen, **bearbeiten, löschen** |
 | **Kalender** | 4 | Termine lesen/anlegen/ändern/löschen, **Teilnehmer einladen** (echte Google-Einladungsmail) |
-| **Gmail** | 13 | Suchen, lesen, **senden mit CC/BCC/Anhängen**, **im Thread antworten**, Anhänge herunterladen (Bilder als echtes Bild), Labels lesen/erstellen/anwenden/entfernen, **Entwürfe** anlegen/lesen/senden, in den Papierkorb verschieben |
+| **Gmail** | 14 | Suchen, lesen, **senden mit CC/BCC/Anhängen/wählbarem Absender**, **im Thread antworten**, Anhänge herunterladen (Bilder als echtes Bild), Labels lesen/erstellen/anwenden/entfernen, **Entwürfe** anlegen/lesen/senden, in den Papierkorb verschieben, konfigurierte "Senden als"-Adressen auflisten |
 | **Docs** | 7 | Anlegen, lesen, Text anhängen/an Position einfügen/löschen, **Suchen & Ersetzen**, Fett/Kursiv/Unterstrichen |
 | **Sheets** | 8 | Anlegen, Bereich lesen/schreiben/anhängen/leeren, **Tabellenblatt anlegen/umbenennen/löschen** |
 | **Slides** | 5 | Anlegen, lesen, Titel+Text-Folie hinzufügen/**löschen/verschieben** |
@@ -160,6 +160,18 @@ hier nur eine Übersicht nach Dienst gruppiert.
 Google-Fehler (fehlender Scope, abgelaufene Berechtigung, API nicht
 aktiviert, ...) kommen 1:1 mit Googles eigener Fehlermeldung zurück, statt
 geraten zu werden.
+
+## Mail über eine andere Absenderadresse schicken
+
+Wer bei Gmail mehrere "Senden als"-Adressen eingerichtet hat (Gmail ->
+Einstellungen -> Konten -> "Senden als"), kann den optionalen Parameter
+`von` bei `google_mail_senden`/`google_mail_antworten`/
+`google_mail_entwurf_erstellen` nutzen, um eine dieser Adressen statt der
+Hauptadresse zu verwenden. `google_mail_absender_liste` zeigt, welche
+Adressen konfiguriert und **verifiziert** sind -- nur verifizierte Adressen
+funktionieren tatsächlich, alles andere ignoriert Gmail und nimmt
+automatisch die Hauptadresse. Neue "Senden als"-Adressen selbst einrichten
+geht weiterhin nur direkt in den Gmail-Einstellungen, nicht über dieses Tool.
 
 ## Bestätigungspflicht beim Löschen
 
