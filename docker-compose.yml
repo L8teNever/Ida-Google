@@ -1,0 +1,66 @@
+services:
+  ida-google-mcp:
+    image: ghcr.io/${GITHUB_OWNER:-l8tenever}/ida-google:${IMAGE_TAG:-latest}
+    container_name: ida-google-mcp
+    restart: unless-stopped
+
+    # Zwei Ports, zwei unterschiedliche Schutzniveaus:
+    # - MCP_PORT (4569): die eigentlichen Google-Werkzeuge, per Bearer-Token
+    #   abgesichert -- ueber einen eigenen Cloudflare-Tunnel-Hostnamen ganz
+    #   normal oeffentlich erreichbar, wie bei Ida-Untis/Ida-Telegram/Ida-Memory.
+    # - AUTH_PORT (4570): der Google-Anmelde-Flow. Nur auf 127.0.0.1 -- den
+    #   Cloudflare-Tunnel-Hostnamen dafuer bewusst zusaetzlich hinter
+    #   Cloudflare Zero Trust Access legen (siehe README), damit den
+    #   Anmelde-Flow wirklich nur der Kontoinhaber selbst starten kann.
+    ports:
+      - "127.0.0.1:${MCP_PORT:-4569}:4569"
+      - "127.0.0.1:${AUTH_PORT:-4570}:4570"
+
+    environment:
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:?Bitte GOOGLE_CLIENT_ID in .env setzen}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:?Bitte GOOGLE_CLIENT_SECRET in .env setzen}
+      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:?Bitte GOOGLE_REDIRECT_URI in .env setzen}
+      MCP_AUTH_TOKEN: ${MCP_AUTH_TOKEN:?Bitte MCP_AUTH_TOKEN in .env setzen}
+      AUTH_TOKEN: ${AUTH_TOKEN:?Bitte AUTH_TOKEN in .env setzen}
+      MCP_HOST: 0.0.0.0
+      MCP_PORT: 4569
+      AUTH_HOST: 0.0.0.0
+      AUTH_PORT: 4570
+      GOOGLE_TOKEN_FILE_PATH: /data/google_token.json
+
+    volumes:
+      - ida-google-data:/data
+
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:4569/healthz', timeout=3)",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+    # Sicherheits-Haertung: kein root im Container (siehe Dockerfile),
+    # keine neuen Privilegien, alle Linux-Capabilities entfernt, Dateisystem
+    # read-only (nur /tmp beschreibbar, /data ueber das benannte Volume fuer
+    # den dauerhaften Google-Refresh-Token).
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  ida-google-data:
