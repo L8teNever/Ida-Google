@@ -8,13 +8,16 @@ services:
     # - MCP_PORT (4569): die eigentlichen Google-Werkzeuge, per Bearer-Token
     #   abgesichert -- ueber einen eigenen Cloudflare-Tunnel-Hostnamen ganz
     #   normal oeffentlich erreichbar, wie bei Ida-Untis/Ida-Telegram/Ida-Memory.
-    # - AUTH_PORT (4570): der Google-Anmelde-Flow. Nur auf 127.0.0.1 -- den
-    #   Cloudflare-Tunnel-Hostnamen dafuer bewusst zusaetzlich hinter
-    #   Cloudflare Zero Trust Access legen (siehe README), damit den
+    # - AUTH_PORT (4570): der Google-Anmelde-Flow. Zusaetzlich zur
+    #   Netzwerk-Bindung den Cloudflare-Tunnel-Hostnamen dafuer bewusst
+    #   hinter Cloudflare Zero Trust Access legen (siehe README), damit den
     #   Anmelde-Flow wirklich nur der Kontoinhaber selbst starten kann.
+    # Bind-IP 10.7.0.1 statt 127.0.0.1: nur so kann der auf diesem Host
+    # separat laufende cloudflared-Container die Ports erreichen (127.0.0.1
+    # waere nur innerhalb des ida-google-mcp-Containers selbst sichtbar).
     ports:
-      - "127.0.0.1:${MCP_PORT:-4569}:4569"
-      - "127.0.0.1:${AUTH_PORT:-4570}:4570"
+      - "10.7.0.1:${MCP_PORT:-4569}:4569"
+      - "10.7.0.1:${AUTH_PORT:-4570}:4570"
 
     environment:
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:?Bitte GOOGLE_CLIENT_ID in .env setzen}

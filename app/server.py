@@ -25,14 +25,23 @@ from app.auth import BearerAuthMiddleware
 from app.config import load_settings
 from app.google_auth import GoogleAuthManager
 from app.google_client import GoogleApiClient
-from app.services import calendar, chat, contacts, docs, gmail, meet, notes, sheets, slides, tasks
+from app.services import calendar, chat, contacts, docs, gmail, meet, sheets, slides, tasks
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s"
 )
 log = logging.getLogger("ida-google")
 
-_SERVICE_MODULES = [tasks, contacts, calendar, gmail, notes, docs, sheets, slides, chat, meet]
+# notes (Google Keep) bewusst NICHT eingehaengt: Googles eigene Doku
+# beschreibt die Keep API als fuer Unternehmensumgebungen gedacht, und ein
+# echter Authorize-Versuch mit einem privaten Google-Konto wurde von Google
+# mit "invalid_scope" abgelehnt -- der Scope laesst sich fuer ein normales
+# Konto offenbar strukturell nicht vergeben. Da alle Scopes in einer
+# Anfrage zusammen angefordert werden, blockierte der eine kaputte Scope
+# die Anmeldung fuer alle anderen Dienste gleich mit. Modul bleibt im Code
+# (app/services/notes.py) fuer den Fall, dass sich das aendert (z.B. mit
+# einem Workspace-Konto) -- dann hier wieder eintragen.
+_SERVICE_MODULES = [tasks, contacts, calendar, gmail, docs, sheets, slides, chat, meet]
 ALL_SCOPES = sorted({scope for module in _SERVICE_MODULES for scope in module.SCOPES})
 
 settings = load_settings()
