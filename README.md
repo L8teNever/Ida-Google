@@ -67,14 +67,14 @@ Ausführliche Schritt-für-Schritt-Anleitung steht direkt in `.env.example`
 anlegen). Kurzfassung: neues Projekt -> Zustimmungsbildschirm (extern, dich
 selbst als Testnutzer) -> benötigte APIs aktivieren (aktuell: **Google Tasks
 API**, **People API**, **Google Calendar API**, **Gmail API**, **Google Keep
-API**) -> OAuth-Client vom Typ "Webanwendung" mit der Redirect-URI
-`https://auth.deine-domain.de/oauth/callback`.
+API**, **Google Docs API**, **Google Sheets API**, **Google Slides API**,
+**Google Chat API**, **Google Meet API**) -> OAuth-Client vom Typ
+"Webanwendung" mit der Redirect-URI `https://auth.deine-domain.de/oauth/callback`.
 
-Wurde `/authorize` schon vor einem Update aufgerufen, das eine neue API
-hinzufügt (z.B. dieses hier, das Kalender/Gmail/Keep neu einführt): danach
-**einmal erneut** `/authorize?token=...` aufrufen, damit auch den neuen
-Scopes zugestimmt wird -- sonst melden die neuen Tools "insufficient
-authentication scopes".
+**Nach jedem Update, das einen neuen Google-Dienst hinzufügt:** einmal
+erneut `/authorize?token=...` aufrufen, damit auch den neuen Scopes
+zugestimmt wird -- sonst melden die neu hinzugekommenen Tools "insufficient
+authentication scopes". Alte Verbindung/Tools bleiben davon unberührt.
 
 ## 2. Einrichten, bauen, starten
 
@@ -159,6 +159,21 @@ https://google.deine-domain.de/mcp?token=<MCP_AUTH_TOKEN>
 | `google_notizen_liste(max_ergebnisse=20)` | Google Keep-Notizen (nur Fließtext, keine Checklisten) |
 | `google_notiz_erstellen(titel, text)` | Neue Notiz anlegen |
 | `google_notiz_loeschen(name)` | Notiz löschen |
+| `google_doc_erstellen(titel, text="")` | Neues Google Doc, optional mit Anfangstext |
+| `google_doc_lesen(document_id)` | Titel + kompletter Fließtext eines Docs |
+| `google_doc_text_anhaengen(document_id, text)` | Text ans Ende eines Docs anhängen |
+| `google_sheet_erstellen(titel)` | Neue Google-Tabelle |
+| `google_sheet_lesen(spreadsheet_id, bereich)` | Zellbereich lesen (A1-Notation) |
+| `google_sheet_schreiben(spreadsheet_id, bereich, werte)` | Zellbereich überschreiben |
+| `google_sheet_zeile_anhaengen(spreadsheet_id, bereich, werte)` | Neue Zeile anhängen |
+| `google_praesentation_erstellen(titel)` | Neue Präsentation |
+| `google_praesentation_lesen(presentation_id)` | Titel + Text jeder Folie |
+| `google_praesentation_folie_hinzufuegen(presentation_id, titel="", text="")` | Neue Titel+Text-Folie |
+| `google_chat_raeume_liste()` | Google-Chat-Räume, in denen der Account Mitglied ist |
+| `google_chat_nachricht_senden(space_name, text)` | **Verschickt tatsächlich eine Nachricht** -- unwiderruflich |
+| `google_chat_nachrichten_liste(space_name, max_ergebnisse=20)` | Letzte Nachrichten eines Raums |
+| `google_meet_raum_erstellen()` | Neuer Meet-Raum, gibt den Beitritts-Link zurück |
+| `google_meet_raum_details(name)` | Details zu einem bestehenden Meet-Raum |
 
 Google-Fehler (fehlender Scope, abgelaufene Berechtigung, API nicht
 aktiviert, ...) kommen 1:1 mit Googles eigener Fehlermeldung zurück, statt
@@ -166,16 +181,21 @@ geraten zu werden.
 
 ## Fahrplan
 
-Aktuell: Google Tasks, Kontakte, Kalender, Gmail (lesen + senden), Keep
-(nur Fließtext-Notizen, keine Checklisten). Geplant, schrittweise mit
-jeweils eigener Testrunde: Google Sheets/Docs (Inhalte bearbeiten, nicht
-nur Dateien anlegen wie der offizielle Drive-Connector), Keep-Checklisten,
-YouTube, Google Chat, Google Meet, Apps Script. Danach die eingeschränkten
-Dienste, wenn das jeweils zutrifft: Google Ads (braucht einen von Google
-genehmigten Developer-Token), Workspace Admin SDK (braucht ein bezahltes
+Aktuell: Tasks, Kontakte, Kalender, Gmail (lesen + senden), Keep (nur
+Fließtext), Docs, Sheets, Slides (einfache Titel+Text-Folien), Chat, Meet
+(nur Raum anlegen/abrufen). Geplant, schrittweise mit jeweils eigener
+Testrunde: Keep-Checklisten, freieres Slides-Layout, YouTube, Apps Script,
+Meet-Teilnehmerlisten/Aufzeichnungen. Danach die eingeschränkten Dienste,
+wenn das jeweils zutrifft: Google Ads (braucht einen von Google genehmigten
+Developer-Token), Workspace Admin SDK (braucht ein bezahltes
 Workspace-Konto mit Admin-Rechten), Classroom (braucht echte
 Classroom-Nutzung), Google Photos (seit einer Google-Richtlinienänderung
 eingeschränkter Lesezugriff für nicht verifizierte Apps).
+
+**Ob Chat und Meet mit einem normalen privaten Google-Konto (statt einem
+bezahlten Workspace-Konto) vollständig funktionieren, ließ sich nicht vorab
+zweifelsfrei klären** -- das zeigt sich beim ersten echten Aufruf über
+Googles eigene Fehlermeldung, statt hier geraten zu werden.
 
 ## Lokal testen ohne Cloudflare
 
