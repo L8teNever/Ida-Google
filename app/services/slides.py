@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import uuid
 
-from app.google_client import GoogleApiClient
+from app.google_client import GoogleApiClient, confirm_or_explain
 
 SCOPES = ["https://www.googleapis.com/auth/presentations"]
 
@@ -85,3 +85,37 @@ def register_tools(mcp, client: GoogleApiClient) -> None:
 
         client.request("POST", f"{_BASE}/{presentation_id}:batchUpdate", json_body={"requests": anfragen})
         return {"presentation_id": presentation_id, "folien_id": slide_id}
+
+    @mcp.tool()
+    def google_praesentation_folie_loeschen(presentation_id: str, folien_id: str, bestaetigt: bool = False) -> dict:
+        """Loescht eine Folie unwiderruflich -- braucht bestaetigt=True.
+
+        folien_id: aus google_praesentation_lesen()/google_praesentation_folie_hinzufuegen().
+        Erst beim Nutzer nachfragen, dann mit bestaetigt=True wiederholen.
+        """
+        guard = confirm_or_explain(bestaetigt, f"Folie {folien_id} in Praesentation {presentation_id} loeschen")
+        if guard:
+            return guard
+        client.request(
+            "POST",
+            f"{_BASE}/{presentation_id}:batchUpdate",
+            json_body={"requests": [{"deleteObject": {"objectId": folien_id}}]},
+        )
+        return {"ausgefuehrt": True}
+
+    @mcp.tool()
+    def google_praesentation_folie_verschieben(presentation_id: str, folien_id: str, neue_position: int) -> dict:
+        """Verschiebt eine Folie an eine neue Position (0 = ganz an den Anfang).
+
+        folien_id: aus google_praesentation_lesen(). neue_position: 0-basiert.
+        """
+        client.request(
+            "POST",
+            f"{_BASE}/{presentation_id}:batchUpdate",
+            json_body={
+                "requests": [
+                    {"updateSlidesPosition": {"slideObjectIds": [folien_id], "insertionIndex": neue_position}}
+                ]
+            },
+        )
+        return {"presentation_id": presentation_id, "folien_id": folien_id, "neue_position": neue_position}

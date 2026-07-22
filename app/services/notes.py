@@ -10,7 +10,7 @@ bei Bedarf dazu.
 
 from __future__ import annotations
 
-from app.google_client import GoogleApiClient
+from app.google_client import GoogleApiClient, confirm_or_explain
 
 SCOPES = ["https://www.googleapis.com/auth/keep"]
 
@@ -55,10 +55,14 @@ def register_tools(mcp, client: GoogleApiClient) -> None:
         return _notiz_kurz(data)
 
     @mcp.tool()
-    def google_notiz_loeschen(name: str) -> str:
-        """Loescht eine Notiz unwiderruflich.
+    def google_notiz_loeschen(name: str, bestaetigt: bool = False) -> dict:
+        """Loescht eine Notiz unwiderruflich -- braucht bestaetigt=True.
 
         name: aus google_notizen_liste() (Feld "name", z.B. "notes/abc123").
+        Erst beim Nutzer nachfragen, dann mit bestaetigt=True wiederholen.
         """
+        guard = confirm_or_explain(bestaetigt, f"Notiz {name} endgueltig loeschen")
+        if guard:
+            return guard
         client.request("DELETE", f"{_BASE}/{name}")
-        return "Notiz geloescht."
+        return {"ausgefuehrt": True}

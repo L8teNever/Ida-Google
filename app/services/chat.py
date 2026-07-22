@@ -14,7 +14,7 @@ from __future__ import annotations
 from app.google_client import GoogleApiClient
 
 SCOPES = [
-    "https://www.googleapis.com/auth/chat.spaces.readonly",
+    "https://www.googleapis.com/auth/chat.spaces",
     "https://www.googleapis.com/auth/chat.messages",
 ]
 
@@ -48,6 +48,19 @@ def register_tools(mcp, client: GoogleApiClient) -> None:
         """
         data = client.request("GET", f"{_BASE}/spaces")
         return [_raum_kurz(s) for s in (data or {}).get("spaces", [])]
+
+    @mcp.tool()
+    def google_chat_raum_erstellen(anzeigename: str) -> dict:
+        """Legt einen neuen Google-Chat-Gruppenraum an.
+
+        anzeigename: Name des neuen Raums.
+        """
+        data = client.request(
+            "POST",
+            f"{_BASE}/spaces",
+            json_body={"space": {"spaceType": "SPACE", "displayName": anzeigename}},
+        )
+        return _raum_kurz(data)
 
     @mcp.tool()
     def google_chat_nachricht_senden(space_name: str, text: str) -> dict:

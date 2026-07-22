@@ -22,6 +22,29 @@ class GoogleApiError(RuntimeError):
     """Fehler, die 1:1 als verständliche Meldung an den MCP-Client zurückgehen sollen."""
 
 
+def confirm_or_explain(bestaetigt: bool, beschreibung: str) -> dict | None:
+    """Gemeinsames Bestaetigungsmuster fuer alle loeschenden/daten-vernichtenden
+    Tools (mit Ausnahme von Kalender-Terminen -- die sollen laut ausdruecklichem
+    Nutzerwunsch ohne Rueckfrage loeschbar bleiben). Codeseitig statt nur per
+    Anweisungstext erzwungen: ohne bestaetigt=True passiert technisch nichts,
+    unabhaengig davon, ob die aufrufende KI die Anweisung "erst nachfragen"
+    befolgt oder nicht.
+
+    Rueckgabe: None wenn bestaetigt=True (Aufrufer soll fortfahren), sonst ein
+    erklaerender Hinweis-dict (bewusst kein Fehler/Exception -- ein Fehler
+    koennte die KI zum Abbrechen statt zum Nachfragen beim Nutzer verleiten)."""
+    if bestaetigt:
+        return None
+    return {
+        "ausgefuehrt": False,
+        "hinweis": (
+            f"Nichts veraendert. Vorher beim Nutzer nachfragen und explizit "
+            f"bestaetigen lassen: {beschreibung}. Danach diesen Aufruf mit "
+            f"bestaetigt=True wiederholen."
+        ),
+    }
+
+
 class GoogleApiClient:
     def __init__(self, google: GoogleAuthManager) -> None:
         self._google = google

@@ -2,9 +2,11 @@
 
 Ein eigenständiger MCP-Server (Model Context Protocol) für Google-Dienste --
 getrennt von Ida-Untis, Ida-Telegram und Ida-Memory, eigenes Repo, eigener
-Container. Gibt Claude Werkzeuge für Google Tasks, Kontakte, Kalender, Gmail
-und Keep-Notizen, mit mehr Diensten in kommenden Ausbaustufen (siehe
-[Fahrplan](#fahrplan) unten).
+Container. Gibt Claude 54 Werkzeuge für Google Tasks, Kontakte, Kalender,
+Gmail, Docs, Sheets, Slides, Chat und Meet, mit mehr Diensten in kommenden
+Ausbaustufen (siehe [Fahrplan](#fahrplan) unten). Ziel ist, ueber die Zeit
+moeglichst alles abzudecken, was die jeweilige Google-API hergibt -- nicht
+nur eine kleine Grundauswahl.
 
 Bewusst als **ein einziger, einheitlicher Connector** gebaut -- auch dort, wo
 es (z.B. für Kalender, Gmail-Lesen, Drive) schon offizielle claude.ai-
@@ -71,10 +73,11 @@ API**, **Google Docs API**, **Google Sheets API**, **Google Slides API**,
 **Google Chat API**, **Google Meet API**) -> OAuth-Client vom Typ
 "Webanwendung" mit der Redirect-URI `https://auth.deine-domain.de/oauth/callback`.
 
-**Nach jedem Update, das einen neuen Google-Dienst hinzufügt:** einmal
-erneut `/authorize?token=...` aufrufen, damit auch den neuen Scopes
-zugestimmt wird -- sonst melden die neu hinzugekommenen Tools "insufficient
-authentication scopes". Alte Verbindung/Tools bleiben davon unberührt.
+**Nach jedem Update, das neue Google-Dienste oder zusätzliche Berechtigungen
+für bestehende Dienste hinzufügt:** einmal erneut `/authorize?token=...`
+aufrufen, damit auch den neuen/erweiterten Scopes zugestimmt wird -- sonst
+melden betroffene Tools "insufficient authentication scopes". Bereits
+funktionierende Tools sind davon nicht betroffen.
 
 ## 2. Einrichten, bauen, starten
 
@@ -136,61 +139,75 @@ claude.ai -> Einstellungen -> Connectors -> Add custom connector -> als URL:
 https://google.deine-domain.de/mcp?token=<MCP_AUTH_TOKEN>
 ```
 
-## Verfügbare MCP-Tools
+## Verfügbare MCP-Tools (54)
 
-| Tool | Zweck |
-|---|---|
-| `google_verbindung_status()` | Prüft, ob überhaupt schon einmal mit Google verbunden wurde |
-| `google_aufgabenlisten()` | Alle Google Tasks-Listen (id + Titel) |
-| `google_aufgaben_liste(tasklist_id, nur_offene=True)` | Aufgaben einer Liste |
-| `google_aufgabe_erstellen(tasklist_id, titel, notizen="", faellig="")` | Neue Aufgabe |
-| `google_aufgabe_erledigt(tasklist_id, task_id)` | Aufgabe als erledigt markieren |
-| `google_aufgabe_loeschen(tasklist_id, task_id)` | Aufgabe löschen |
-| `google_kontakte_liste(max_ergebnisse=50)` | Kontakte (Name, E-Mails, Telefonnummern) |
-| `google_kontakt_erstellen(vorname, nachname="", email="", telefon="")` | Neuen Kontakt anlegen |
-| `google_kontakt_details(resource_name)` | Details zu einem Kontakt |
-| `google_termine_liste(von="", bis="", max_ergebnisse=20, kalender_id="primary")` | Termine in einem Zeitraum (Standard: naechste 30 Tage) |
-| `google_termin_erstellen(titel, start, ende, beschreibung="", ganztaegig=False, kalender_id="primary")` | Neuen Termin anlegen |
-| `google_termin_aktualisieren(event_id, titel="", start="", ende="", beschreibung="", ...)` | Einzelne Felder eines Termins ändern |
-| `google_termin_loeschen(event_id, kalender_id="primary")` | Termin löschen |
-| `google_mails_suchen(query="", max_ergebnisse=10)` | Gmail durchsuchen (Betreff, Absender, Datum, Vorschau) |
-| `google_mail_lesen(message_id)` | Eine Mail vollständig lesen (inkl. Text) |
-| `google_mail_senden(an, betreff, text)` | **Verschickt tatsächlich eine Mail** -- unwiderruflich |
-| `google_notizen_liste(max_ergebnisse=20)` | Google Keep-Notizen (nur Fließtext, keine Checklisten) |
-| `google_notiz_erstellen(titel, text)` | Neue Notiz anlegen |
-| `google_notiz_loeschen(name)` | Notiz löschen |
-| `google_doc_erstellen(titel, text="")` | Neues Google Doc, optional mit Anfangstext |
-| `google_doc_lesen(document_id)` | Titel + kompletter Fließtext eines Docs |
-| `google_doc_text_anhaengen(document_id, text)` | Text ans Ende eines Docs anhängen |
-| `google_sheet_erstellen(titel)` | Neue Google-Tabelle |
-| `google_sheet_lesen(spreadsheet_id, bereich)` | Zellbereich lesen (A1-Notation) |
-| `google_sheet_schreiben(spreadsheet_id, bereich, werte)` | Zellbereich überschreiben |
-| `google_sheet_zeile_anhaengen(spreadsheet_id, bereich, werte)` | Neue Zeile anhängen |
-| `google_praesentation_erstellen(titel)` | Neue Präsentation |
-| `google_praesentation_lesen(presentation_id)` | Titel + Text jeder Folie |
-| `google_praesentation_folie_hinzufuegen(presentation_id, titel="", text="")` | Neue Titel+Text-Folie |
-| `google_chat_raeume_liste()` | Google-Chat-Räume, in denen der Account Mitglied ist |
-| `google_chat_nachricht_senden(space_name, text)` | **Verschickt tatsächlich eine Nachricht** -- unwiderruflich |
-| `google_chat_nachrichten_liste(space_name, max_ergebnisse=20)` | Letzte Nachrichten eines Raums |
-| `google_meet_raum_erstellen()` | Neuer Meet-Raum, gibt den Beitritts-Link zurück |
-| `google_meet_raum_details(name)` | Details zu einem bestehenden Meet-Raum |
+Vollständige Parameter/Docstrings direkt im Code (`app/services/*.py`) --
+hier nur eine Übersicht nach Dienst gruppiert.
+
+| Dienst | Tools | Kann u.a. |
+|---|---|---|
+| Verbindung | `google_verbindung_status` | Prüft, ob überhaupt mit Google verbunden |
+| **Tasks** | 5 | Listen/Aufgaben lesen, anlegen, erledigt markieren, löschen |
+| **Kontakte** | 5 | Lesen, anlegen, **bearbeiten, löschen** |
+| **Kalender** | 4 | Termine lesen/anlegen/ändern/löschen, **Teilnehmer einladen** (echte Google-Einladungsmail) |
+| **Gmail** | 13 | Suchen, lesen, **senden mit CC/BCC/Anhängen**, **im Thread antworten**, Anhänge herunterladen (Bilder als echtes Bild), Labels lesen/erstellen/anwenden/entfernen, **Entwürfe** anlegen/lesen/senden, in den Papierkorb verschieben |
+| **Docs** | 7 | Anlegen, lesen, Text anhängen/an Position einfügen/löschen, **Suchen & Ersetzen**, Fett/Kursiv/Unterstrichen |
+| **Sheets** | 8 | Anlegen, Bereich lesen/schreiben/anhängen/leeren, **Tabellenblatt anlegen/umbenennen/löschen** |
+| **Slides** | 5 | Anlegen, lesen, Titel+Text-Folie hinzufügen/**löschen/verschieben** |
+| **Chat** | 4 | Räume auflisten, **Raum erstellen**, Nachricht senden, Nachrichten lesen |
+| **Meet** | 2 | Meeting-Raum anlegen (Beitritts-Link), Details abrufen |
 
 Google-Fehler (fehlender Scope, abgelaufene Berechtigung, API nicht
 aktiviert, ...) kommen 1:1 mit Googles eigener Fehlermeldung zurück, statt
 geraten zu werden.
 
+## Bestätigungspflicht beim Löschen
+
+Jedes Tool, das Daten unwiderruflich entfernt (Name endet auf
+`_loeschen`, dazu `google_mail_papierkorb` und `google_sheet_bereich_leeren`),
+hat einen Parameter `bestaetigt` (Standard `False`). Ohne `bestaetigt=True`
+passiert **technisch nichts** -- das Tool gibt nur einen Hinweis zurück, was
+gelöscht würde. Claude ist angewiesen, immer erst im Chat nachzufragen und
+dann mit `bestaetigt=True` zu wiederholen. Das ist codeseitig erzwungen,
+nicht nur eine Anweisung, der die KI folgen könnte oder auch nicht.
+
+**Ausnahme: `google_termin_loeschen` (Kalender-Termine).** Der hat gar
+keinen `bestaetigt`-Parameter und löscht sofort -- ausdrücklich so
+gewünscht, damit Terminänderungen schnell gehen.
+
+Mail-/Chat-Versand (`google_mail_senden`, `google_mail_antworten`,
+`google_mail_entwurf_senden`, `google_chat_nachricht_senden`) hat *keinen*
+codeseitigen Schutz (das würde bedeuten, doppelt aufrufen zu müssen, nur um
+einmal zu senden) -- dafür weisen die Server-`instructions` Claude an, den
+Inhalt vor dem Senden im Chat zu bestätigen.
+
 ## Fahrplan
 
-Aktuell: Tasks, Kontakte, Kalender, Gmail (lesen + senden), Keep (nur
-Fließtext), Docs, Sheets, Slides (einfache Titel+Text-Folien), Chat, Meet
-(nur Raum anlegen/abrufen). Geplant, schrittweise mit jeweils eigener
-Testrunde: Keep-Checklisten, freieres Slides-Layout, YouTube, Apps Script,
-Meet-Teilnehmerlisten/Aufzeichnungen. Danach die eingeschränkten Dienste,
-wenn das jeweils zutrifft: Google Ads (braucht einen von Google genehmigten
-Developer-Token), Workspace Admin SDK (braucht ein bezahltes
-Workspace-Konto mit Admin-Rechten), Classroom (braucht echte
-Classroom-Nutzung), Google Photos (seit einer Google-Richtlinienänderung
-eingeschränkter Lesezugriff für nicht verifizierte Apps).
+Ziel ist moeglichst vollstaendige Abdeckung jeder angebundenen API, nicht
+nur eine Grundauswahl -- wird schrittweise erweitert, mit jeweils eigener
+Testrunde. Bekannte, noch offene Lücken:
+
+- **Gmail**: Filter/Regeln verwalten, mehrere Anhänge pro Downloadaufruf.
+- **Docs**: Bilder, Tabellen, Kommentare/Vorschläge, Aufzählungslisten.
+- **Sheets**: Zellformatierung (Farben/Schrift), Diagramme, Sortieren/Filtern, Pivot-Tabellen.
+- **Slides**: freies Layout (Bilder, Positionierung, eigene Designs statt nur Titel+Text).
+- **Kontakte**: Kontaktgruppen, Volltextsuche über `searchContacts`.
+- **Meet**: Teilnehmerlisten, Aufzeichnungen/Transkripte (`conferenceRecords`).
+- **Neue Dienste**: YouTube, Apps Script.
+
+**Google Keep ist deaktiviert** (Code liegt in `app/services/notes.py`,
+aber nicht in `_SERVICE_MODULES` eingehängt): Googles eigene Doku
+beschreibt die Keep API als für Unternehmensumgebungen gedacht, und ein
+echter Authorize-Versuch mit einem privaten Google-Konto wurde von Google
+mit `invalid_scope` abgelehnt. Kommt zurück, falls sich das mal ändert
+(z.B. mit einem Workspace-Konto).
+
+Danach die weiteren eingeschränkten Dienste, wenn das jeweils zutrifft:
+Google Ads (braucht einen von Google genehmigten Developer-Token),
+Workspace Admin SDK (braucht ein bezahltes Workspace-Konto mit
+Admin-Rechten), Classroom (braucht echte Classroom-Nutzung), Google Photos
+(seit einer Google-Richtlinienänderung eingeschränkter Lesezugriff für
+nicht verifizierte Apps).
 
 **Ob Chat und Meet mit einem normalen privaten Google-Konto (statt einem
 bezahlten Workspace-Konto) vollständig funktionieren, ließ sich nicht vorab
@@ -219,7 +236,16 @@ curl -H "Authorization: Bearer $MCP_AUTH_TOKEN" http://127.0.0.1:4569/healthz
   [myaccount.google.com/permissions](https://myaccount.google.com/permissions)
   den Zugriff dieser App entfernen und `/authorize` erneut aufrufen.
 - **Google-API-Fehler "insufficient authentication scopes" o.ä.**: Nach
-  einem Update, das einen neuen Google-Dienst hinzufügt, muss `/authorize`
-  erneut aufgerufen werden, damit die neuen Scopes mit zugestimmt werden.
+  einem Update, das neue/erweiterte Berechtigungen braucht, muss
+  `/authorize` erneut aufgerufen werden, damit die neuen Scopes mit
+  zugestimmt werden.
+- **Google-API-Fehler "invalid_scope" beim Aufrufen von `/authorize`**:
+  einer der angeforderten Scopes lässt sich für diesen Google-Account/dieses
+  Cloud-Projekt nicht vergeben (z.B. Keep, siehe Fahrplan) -- betrifft dann
+  die komplette Anmeldung, da alle Scopes zusammen angefragt werden. In
+  `app/server.py` das entsprechende Modul aus `_SERVICE_MODULES` entfernen.
+- **Lösch-Tool antwortet nur mit einem Hinweis, löscht aber nichts**: so
+  gewollt -- erst mit `bestaetigt=True` erneut aufrufen (siehe
+  [Bestätigungspflicht beim Löschen](#bestätigungspflicht-beim-löschen)).
 - **Claude/eine KI bekommt 401 auf dem MCP-Port**: Token in
   Client-Konfiguration und `.env` vergleichen.

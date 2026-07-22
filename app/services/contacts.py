@@ -5,7 +5,7 @@ API-Doku: https://developers.google.com/people/api/rest
 
 from __future__ import annotations
 
-from app.google_client import GoogleApiClient
+from app.google_client import GoogleApiClient, confirm_or_explain
 
 SCOPES = ["https://www.googleapis.com/auth/contacts"]
 
@@ -75,3 +75,55 @@ def register_tools(mcp, client: GoogleApiClient) -> None:
             params={"personFields": _PERSON_FIELDS},
         )
         return _kontakt_kurz(data)
+
+    @mcp.tool()
+    def google_kontakt_aktualisieren(
+        resource_name: str, vorname: str = "", nachname: str = "", email: str = "", telefon: str = ""
+    ) -> dict:
+        """Aendert einzelne Felder eines bestehenden Kontakts (nur angegebene
+        Felder werden ersetzt, leere Parameter bleiben unangetastet).
+
+        resource_name: aus google_kontakte_liste()/google_kontakt_details().
+        """
+        aktuell = client.request(
+            "GET", f"{_BASE}/{resource_name}", params={"personFields": _PERSON_FIELDS}
+        )
+        person: dict = {"etag": aktuell["etag"]}
+        update_felder = []
+
+        if vorname or nachname:
+            bisheriger_name = (aktuell.get("names") or [{}])[0]
+            person["names"] = [
+                {
+                    "givenName": vorname or bisheriger_name.get("givenName", ""),
+                    "familyName": nachname or bisheriger_name.get("familyName", ""),
+                }
+            ]
+            update_felder.append("names")
+        if email:
+            person["emailAddresses"] = [{"value": email}]
+            update_felder.append("emailAddresses")
+        if telefon:
+            person["phoneNumbers"] = [{"value": telefon}]
+            update_felder.append("phoneNumbers")
+
+        data = client.request(
+            "PATCH",
+            f"{_BASE}/{resource_name}:updateContact",
+            params={"updatePersonFields": ",".join(update_felder), "personFields": _PERSON_FIELDS},
+            json_body=person,
+        )
+        return _kontakt_kurz(data)
+
+    @mcp.tool()
+    def google_kontakt_loeschen(resource_name: str, bestaetigt: bool = False) -> dict:
+        """Loescht einen Kontakt unwiderruflich -- braucht bestaetigt=True.
+
+        resource_name: aus google_kontakte_liste()/google_kontakt_details().
+        Erst beim Nutzer nachfragen, dann mit bestaetigt=True wiederholen.
+        """
+        guard = confirm_or_explain(bestaetigt, f"Kontakt {resource_name} endgueltig loeschen")
+        if guard:
+            return guard
+        client.request("DELETE", f"{_BASE}/{resource_name}:deleteContact")
+        return {"ausgefuehrt": True}

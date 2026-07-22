@@ -5,7 +5,7 @@ API-Doku: https://developers.google.com/tasks/reference/rest
 
 from __future__ import annotations
 
-from app.google_client import GoogleApiClient
+from app.google_client import GoogleApiClient, confirm_or_explain
 
 SCOPES = ["https://www.googleapis.com/auth/tasks"]
 
@@ -81,10 +81,14 @@ def register_tools(mcp, client: GoogleApiClient) -> None:
         return _aufgabe_kurz(data)
 
     @mcp.tool()
-    def google_aufgabe_loeschen(tasklist_id: str, task_id: str) -> str:
-        """Loescht eine Aufgabe unwiderruflich.
+    def google_aufgabe_loeschen(tasklist_id: str, task_id: str, bestaetigt: bool = False) -> dict:
+        """Loescht eine Aufgabe unwiderruflich -- braucht bestaetigt=True.
 
         tasklist_id/task_id: aus google_aufgabenlisten()/google_aufgaben_liste().
+        Erst beim Nutzer nachfragen, dann mit bestaetigt=True wiederholen.
         """
+        guard = confirm_or_explain(bestaetigt, f"Aufgabe {task_id} endgueltig loeschen")
+        if guard:
+            return guard
         client.request("DELETE", f"{_BASE}/lists/{tasklist_id}/tasks/{task_id}")
-        return "Aufgabe geloescht."
+        return {"ausgefuehrt": True}

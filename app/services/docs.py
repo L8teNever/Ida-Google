@@ -8,7 +8,7 @@ robuster als selbst die letzte Index-Position des Dokuments auszurechnen.
 
 from __future__ import annotations
 
-from app.google_client import GoogleApiClient
+from app.google_client import GoogleApiClient, confirm_or_explain
 
 SCOPES = ["https://www.googleapis.com/auth/documents"]
 
@@ -69,3 +69,105 @@ def register_tools(mcp, client: GoogleApiClient) -> None:
             json_body={"requests": [{"insertText": {"text": text, "endOfSegmentLocation": {}}}]},
         )
         return {"document_id": document_id, "angehaengt": True}
+
+    @mcp.tool()
+    def google_doc_text_einfuegen(document_id: str, text: str, index: int) -> dict:
+        """Fuegt Text an einer bestimmten Position ein (nicht nur am Ende).
+
+        document_id: aus google_doc_erstellen()/google_doc_lesen(). index:
+        Zeichenposition -- Index 1 ist der Dokumentanfang (0 ist reserviert).
+        """
+        client.request(
+            "POST",
+            f"{_BASE}/{document_id}:batchUpdate",
+            json_body={"requests": [{"insertText": {"text": text, "location": {"index": index}}}]},
+        )
+        return {"document_id": document_id, "eingefuegt": True}
+
+    @mcp.tool()
+    def google_doc_text_loeschen(document_id: str, start_index: int, end_index: int, bestaetigt: bool = False) -> dict:
+        """Loescht den Text zwischen zwei Positionen unwiderruflich --
+        braucht bestaetigt=True.
+
+        document_id/Indizes: start_index/end_index z.B. aus vorherigem
+        google_doc_lesen() (Position im Fliesstext abzaehlen). Erst beim
+        Nutzer nachfragen, dann mit bestaetigt=True wiederholen.
+        """
+        guard = confirm_or_explain(
+            bestaetigt, f"Text von Position {start_index} bis {end_index} in Dokument {document_id} loeschen"
+        )
+        if guard:
+            return guard
+        client.request(
+            "POST",
+            f"{_BASE}/{document_id}:batchUpdate",
+            json_body={
+                "requests": [
+                    {"deleteContentRange": {"range": {"startIndex": start_index, "endIndex": end_index}}}
+                ]
+            },
+        )
+        return {"ausgefuehrt": True}
+
+    @mcp.tool()
+    def google_doc_text_ersetzen(document_id: str, suchtext: str, ersatztext: str, gross_klein_beachten: bool = True) -> dict:
+        """Ersetzt alle Vorkommen eines Textes im Dokument (Suchen & Ersetzen).
+
+        document_id: aus google_doc_erstellen()/google_doc_lesen().
+        """
+        data = client.request(
+            "POST",
+            f"{_BASE}/{document_id}:batchUpdate",
+            json_body={
+                "requests": [
+                    {
+                        "replaceAllText": {
+                            "containsText": {"text": suchtext, "matchCase": gross_klein_beachten},
+                            "replaceText": ersatztext,
+                        }
+                    }
+                ]
+            },
+        )
+        anzahl = (data.get("replies") or [{}])[0].get("replaceAllText", {}).get("occurrencesChanged", 0)
+        return {"document_id": document_id, "ersetzungen": anzahl}
+
+    @mcp.tool()
+    def google_doc_formatieren(
+        document_id: str, start_index: int, end_index: int,
+        fett: bool = False, kursiv: bool = False, unterstrichen: bool = False,
+    ) -> dict:
+        """Wendet einfache Textformatierung auf einen Bereich an.
+
+        Indizes wie bei google_doc_text_loeschen. Nur die auf True gesetzten
+        Formatierungen werden angewendet, andere Formatierung im Bereich
+        bleibt unangetastet.
+        """
+        text_style: dict = {}
+        fields = []
+        if fett:
+            text_style["bold"] = True
+            fields.append("bold")
+        if kursiv:
+            text_style["italic"] = True
+            fields.append("italic")
+        if unterstrichen:
+            text_style["underline"] = True
+            fields.append("underline")
+
+        client.request(
+            "POST",
+            f"{_BASE}/{document_id}:batchUpdate",
+            json_body={
+                "requests": [
+                    {
+                        "updateTextStyle": {
+                            "range": {"startIndex": start_index, "endIndex": end_index},
+                            "textStyle": text_style,
+                            "fields": ",".join(fields) if fields else "*",
+                        }
+                    }
+                ]
+            },
+        )
+        return {"document_id": document_id, "formatiert": True}
