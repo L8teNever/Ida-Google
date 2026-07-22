@@ -2,14 +2,15 @@
 
 Ein eigenständiger MCP-Server (Model Context Protocol) für Google-Dienste --
 getrennt von Ida-Untis, Ida-Telegram und Ida-Memory, eigenes Repo, eigener
-Container. Gibt Claude Werkzeuge für Google Tasks und Google Kontakte, mit
-mehr Diensten in kommenden Ausbaustufen (siehe [Fahrplan](#fahrplan) unten).
+Container. Gibt Claude Werkzeuge für Google Tasks, Kontakte, Kalender, Gmail
+und Keep-Notizen, mit mehr Diensten in kommenden Ausbaustufen (siehe
+[Fahrplan](#fahrplan) unten).
 
-**Bewusst kein Ersatz für die offiziellen claude.ai-Connectors** für Google
-Kalender, Gmail und Google Drive -- die sind bereits vollständig (Kalender
-komplett CRUD, Drive inkl. Datei-Erstellung, Gmail lesen/Entwürfe) und lassen
-sich genauso an Routinen anhängen. Ida-Google deckt nur das ab, was es dort
-nicht gibt.
+Bewusst als **ein einziger, einheitlicher Connector** gebaut -- auch dort, wo
+es (z.B. für Kalender, Gmail-Lesen, Drive) schon offizielle claude.ai-
+Connectors gibt. Eine echte Ergänzung dazu: `google_mail_senden` kann
+tatsächlich **senden**, nicht nur lesen/entwerfen wie der offizielle
+Gmail-Connector.
 
 ## Architektur: zwei Ports, zwei Vertrauenszonen
 
@@ -65,8 +66,15 @@ Ausführliche Schritt-für-Schritt-Anleitung steht direkt in `.env.example`
 (OAuth-Zustimmungsbildschirm, benötigte APIs aktivieren, OAuth-Client
 anlegen). Kurzfassung: neues Projekt -> Zustimmungsbildschirm (extern, dich
 selbst als Testnutzer) -> benötigte APIs aktivieren (aktuell: **Google Tasks
-API**, **People API**) -> OAuth-Client vom Typ "Webanwendung" mit der
-Redirect-URI `https://auth.deine-domain.de/oauth/callback`.
+API**, **People API**, **Google Calendar API**, **Gmail API**, **Google Keep
+API**) -> OAuth-Client vom Typ "Webanwendung" mit der Redirect-URI
+`https://auth.deine-domain.de/oauth/callback`.
+
+Wurde `/authorize` schon vor einem Update aufgerufen, das eine neue API
+hinzufügt (z.B. dieses hier, das Kalender/Gmail/Keep neu einführt): danach
+**einmal erneut** `/authorize?token=...` aufrufen, damit auch den neuen
+Scopes zugestimmt wird -- sonst melden die neuen Tools "insufficient
+authentication scopes".
 
 ## 2. Einrichten, bauen, starten
 
@@ -141,6 +149,16 @@ https://google.deine-domain.de/mcp?token=<MCP_AUTH_TOKEN>
 | `google_kontakte_liste(max_ergebnisse=50)` | Kontakte (Name, E-Mails, Telefonnummern) |
 | `google_kontakt_erstellen(vorname, nachname="", email="", telefon="")` | Neuen Kontakt anlegen |
 | `google_kontakt_details(resource_name)` | Details zu einem Kontakt |
+| `google_termine_liste(von="", bis="", max_ergebnisse=20, kalender_id="primary")` | Termine in einem Zeitraum (Standard: naechste 30 Tage) |
+| `google_termin_erstellen(titel, start, ende, beschreibung="", ganztaegig=False, kalender_id="primary")` | Neuen Termin anlegen |
+| `google_termin_aktualisieren(event_id, titel="", start="", ende="", beschreibung="", ...)` | Einzelne Felder eines Termins ändern |
+| `google_termin_loeschen(event_id, kalender_id="primary")` | Termin löschen |
+| `google_mails_suchen(query="", max_ergebnisse=10)` | Gmail durchsuchen (Betreff, Absender, Datum, Vorschau) |
+| `google_mail_lesen(message_id)` | Eine Mail vollständig lesen (inkl. Text) |
+| `google_mail_senden(an, betreff, text)` | **Verschickt tatsächlich eine Mail** -- unwiderruflich |
+| `google_notizen_liste(max_ergebnisse=20)` | Google Keep-Notizen (nur Fließtext, keine Checklisten) |
+| `google_notiz_erstellen(titel, text)` | Neue Notiz anlegen |
+| `google_notiz_loeschen(name)` | Notiz löschen |
 
 Google-Fehler (fehlender Scope, abgelaufene Berechtigung, API nicht
 aktiviert, ...) kommen 1:1 mit Googles eigener Fehlermeldung zurück, statt
@@ -148,13 +166,13 @@ geraten zu werden.
 
 ## Fahrplan
 
-Aktuell: Google Tasks, Google Kontakte. Geplant, schrittweise mit jeweils
-eigener Testrunde: Google Sheets/Docs (Inhalte bearbeiten, nicht nur
-Dateien anlegen wie der offizielle Drive-Connector), YouTube, Google Chat,
-Google Meet, Apps Script, Gmail-Versand (der offizielle Connector kann nur
-lesen/entwerfen, nicht senden). Danach die eingeschränkten Dienste, wenn
-das jeweils zutrifft: Google Ads (braucht einen von Google genehmigten
-Developer-Token), Workspace Admin SDK (braucht ein bezahltes
+Aktuell: Google Tasks, Kontakte, Kalender, Gmail (lesen + senden), Keep
+(nur Fließtext-Notizen, keine Checklisten). Geplant, schrittweise mit
+jeweils eigener Testrunde: Google Sheets/Docs (Inhalte bearbeiten, nicht
+nur Dateien anlegen wie der offizielle Drive-Connector), Keep-Checklisten,
+YouTube, Google Chat, Google Meet, Apps Script. Danach die eingeschränkten
+Dienste, wenn das jeweils zutrifft: Google Ads (braucht einen von Google
+genehmigten Developer-Token), Workspace Admin SDK (braucht ein bezahltes
 Workspace-Konto mit Admin-Rechten), Classroom (braucht echte
 Classroom-Nutzung), Google Photos (seit einer Google-Richtlinienänderung
 eingeschränkter Lesezugriff für nicht verifizierte Apps).

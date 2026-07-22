@@ -25,14 +25,14 @@ from app.auth import BearerAuthMiddleware
 from app.config import load_settings
 from app.google_auth import GoogleAuthManager
 from app.google_client import GoogleApiClient
-from app.services import contacts, tasks
+from app.services import calendar, contacts, gmail, notes, tasks
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s"
 )
 log = logging.getLogger("ida-google")
 
-_SERVICE_MODULES = [tasks, contacts]
+_SERVICE_MODULES = [tasks, contacts, calendar, gmail, notes]
 ALL_SCOPES = sorted({scope for module in _SERVICE_MODULES for scope in module.SCOPES})
 
 settings = load_settings()
@@ -42,12 +42,14 @@ client = GoogleApiClient(google)
 mcp = FastMCP(
     "Ida-Google",
     instructions=(
-        "Werkzeuge fuer Google-Dienste (Google Tasks, Kontakte, weitere "
-        "kommen dazu) -- alle fuer genau den einen Google-Account, der "
-        "einmalig ueber den separaten Auth-Port verbunden wurde. "
-        "google_verbindung_status zuerst aufrufen, wenn ein Tool einen "
-        "Verbindungsfehler meldet -- zeigt, ob die Google-Anmeldung ueberhaupt "
-        "schon gemacht wurde."
+        "Werkzeuge fuer Google-Dienste (Tasks, Kontakte, Kalender, Gmail, "
+        "Keep-Notizen -- weitere kommen dazu) -- alle fuer genau den einen "
+        "Google-Account, der einmalig ueber den separaten Auth-Port "
+        "verbunden wurde. google_verbindung_status zuerst aufrufen, wenn ein "
+        "Tool einen Verbindungsfehler meldet -- zeigt, ob die Google-Anmeldung "
+        "ueberhaupt schon gemacht wurde. google_mail_senden verschickt "
+        "sofort und unwiderruflich -- vor dem Senden immer den Inhalt mit "
+        "dem Nutzer bestaetigen, nicht eigenmaechtig senden."
     ),
     host=settings.mcp_host,
     port=settings.mcp_port,
