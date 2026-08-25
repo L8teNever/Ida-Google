@@ -19,14 +19,6 @@ services:
       - "10.7.0.1:${MCP_PORT:-4569}:4569"
       - "10.7.0.1:${AUTH_PORT:-4570}:4570"
 
-    # env_file gibt dem Container ALLE Variablen aus der .env mit -- vor
-    # allem die optionalen MAILBOX_<N>_*-Bloecke fuer zusaetzliche
-    # IMAP/SMTP-Postfaecher, deren Anzahl dynamisch ist (siehe app/config.py).
-    # environment: darunter ueberschreibt bei Namensgleichheit gezielt die
-    # Pflichtpruefungen und container-internen Fixwerte.
-    env_file:
-      - .env
-
     environment:
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:?Bitte GOOGLE_CLIENT_ID in .env setzen}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:?Bitte GOOGLE_CLIENT_SECRET in .env setzen}

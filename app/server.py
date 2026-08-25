@@ -25,7 +25,7 @@ from app.auth import BearerAuthMiddleware
 from app.config import load_settings
 from app.google_auth import GoogleAuthManager
 from app.google_client import GoogleApiClient
-from app.services import calendar, chat, contacts, docs, gmail, mailbox, meet, sheets, slides, tasks
+from app.services import calendar, chat, contacts, docs, gmail, meet, sheets, slides, tasks
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s"
@@ -70,17 +70,7 @@ mcp = FastMCP(
         "bestaetigt=True wiederholen. AUSNAHME: google_termin_loeschen "
         "(Kalender) braucht keine Bestaetigung und darf direkt ausgefuehrt "
         "werden -- das ist so gewuenscht, damit Terminaenderungen schnell "
-        "gehen. "
-        "ZUSAETZLICH zum einen Google-Account gibt es optional postfach_*-Tools "
-        "fuer weitere, NICHT-Google-Postfaecher per IMAP/SMTP (z.B. GMX, "
-        "Web.de, Outlook, eine eigene Domain) -- postfach_liste() zeigt, "
-        "welche (falls ueberhaupt welche) konfiguriert sind. Fuer Mails ueber "
-        "eines dieser anderen Konten IMMER postfach_senden/postfach_antworten "
-        "benutzen, NICHT google_mail_senden mit von=<fremde Adresse> -- das "
-        "von-Feld dort funktioniert nur fuer beim Google-Konto verifizierte "
-        "'Senden als'-Aliase, nicht fuer beliebige externe Adressen. "
-        "postfach_senden/postfach_antworten verschicken ebenfalls sofort und "
-        "unwiderruflich -- Inhalt vorher bestaetigen lassen."
+        "gehen."
     ),
     host=settings.mcp_host,
     port=settings.mcp_port,
@@ -100,11 +90,6 @@ def google_verbindung_status() -> dict:
 
 for _module in _SERVICE_MODULES:
     _module.register_tools(mcp, client)
-
-# mailbox NICHT Teil von _SERVICE_MODULES: braucht die Postfach-Konfiguration
-# statt des gemeinsamen GoogleApiClient, und ist unabhaengig vom Google-Account
-# (registriert sich selbst komplett weg, wenn kein MAILBOX_1_* gesetzt ist).
-mailbox.register_tools(mcp, settings.postfaecher)
 
 
 async def healthz(request):
