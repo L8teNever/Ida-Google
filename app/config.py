@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import re
 import sys
 from dataclasses import dataclass
 
@@ -21,6 +22,77 @@ def _require(name: str) -> str:
 def _optional(name: str, default: str) -> str:
     value = os.environ.get(name, "").strip()
     return value or default
+
+
+@dataclass(frozen=True)
+class Postfach:
+    """Ein zusaetzliches, NICHT-Google-Postfach per IMAP/SMTP (z.B. GMX,
+    Web.de, Outlook, eine eigene Domain) -- unabhaengig vom einen
+    Google-Account, den dieser Server sonst per OAuth verwaltet."""
+
+    name: str
+    email: str
+    imap_host: str
+    imap_port: int
+    smtp_host: str
+    smtp_port: int
+    username: str
+    password: str
+
+
+_MAILBOX_VAR_PATTERN = re.compile(
+    r"^MAILBOX_(\d+)_(NAME|EMAIL|IMAP_HOST|IMAP_PORT|SMTP_HOST|SMTP_PORT|USERNAME|PASSWORD)$"
+)
+
+
+def _postfaecher_aus_umgebung_lesen() -> dict[str, Postfach]:
+    """Scannt die Umgebung selbst nach MAILBOX_<N>_*-Variablen -- kein fester
+    Deckel, wie viele zusaetzliche Postfaecher es gibt (analog zu Ida-Reminders
+    REMINDER_SLOT_<N>_*-Muster). Komplett optional: ohne eine einzige
+    MAILBOX_1_*-Variable bleibt das Feature einfach abgeschaltet, bestehende
+    Ida-Google-Deployments ohne dieses Feature brauchen keine Aenderung."""
+    gefunden: dict[int, dict[str, str]] = {}
+    for env_name, value in os.environ.items():
+        match = _MAILBOX_VAR_PATTERN.match(env_name)
+        if not match:
+            continue
+        wert = value.strip()
+        if not wert:
+            continue
+        nummer = int(match.group(1))
+        gefunden.setdefault(nummer, {})[match.group(2)] = wert
+
+    postfaecher: dict[str, Postfach] = {}
+    namen_gesehen: set[str] = set()
+    for nummer, werte in sorted(gefunden.items()):
+        fehlend = [
+            feld for feld in ("NAME", "EMAIL", "IMAP_HOST", "SMTP_HOST", "PASSWORD")
+            if not werte.get(feld)
+        ]
+        if fehlend:
+            raise ConfigError(
+                f"MAILBOX_{nummer}_*: {', '.join('MAILBOX_' + str(nummer) + '_' + f for f in fehlend)} "
+                "fehlt -- NAME/EMAIL/IMAP_HOST/SMTP_HOST/PASSWORD sind Pflicht, "
+                "IMAP_PORT/SMTP_PORT/USERNAME sind optional."
+            )
+        name = werte["NAME"]
+        if name in namen_gesehen:
+            raise ConfigError(
+                f"MAILBOX_{nummer}_NAME={name!r} ist nicht eindeutig -- jeder "
+                "Postfach-Name muss einmalig sein, er wird als postfach-Parameter benutzt."
+            )
+        namen_gesehen.add(name)
+        postfaecher[name] = Postfach(
+            name=name,
+            email=werte["EMAIL"],
+            imap_host=werte["IMAP_HOST"],
+            imap_port=int(werte.get("IMAP_PORT", "993")),
+            smtp_host=werte["SMTP_HOST"],
+            smtp_port=int(werte.get("SMTP_PORT", "587")),
+            username=werte.get("USERNAME", werte["EMAIL"]),
+            password=werte["PASSWORD"],
+        )
+    return postfaecher
 
 
 def _require_min_length(name: str, min_length: int) -> str:
@@ -59,6 +131,10 @@ class Settings:
     # Wo der Google-Refresh-Token dauerhaft gespeichert wird (Docker-Volume).
     token_file_path: str
 
+    # Zusaetzliche, NICHT-Google-Postfaecher per IMAP/SMTP -- optional,
+    # Schluessel ist der Postfach-Name (MAILBOX_<N>_NAME).
+    postfaecher: dict[str, Postfach]
+
 
 def load_settings() -> Settings:
     try:
@@ -76,6 +152,7 @@ def load_settings() -> Settings:
             auth_port=int(_optional("AUTH_PORT", "4570")),
             auth_token=auth_token,
             token_file_path=_optional("GOOGLE_TOKEN_FILE_PATH", "/data/google_token.json"),
+            postfaecher=_postfaecher_aus_umgebung_lesen(),
         )
     except ConfigError as exc:
         print(f"[Ida-Google] Konfigurationsfehler: {exc}", file=sys.stderr)

@@ -156,6 +156,7 @@ hier nur eine Übersicht nach Dienst gruppiert.
 | **Slides** | 5 | Anlegen, lesen, Titel+Text-Folie hinzufügen/**löschen/verschieben** |
 | **Chat** | 4 | Räume auflisten, **Raum erstellen**, Nachricht senden, Nachrichten lesen |
 | **Meet** | 2 | Meeting-Raum anlegen (Beitritts-Link), Details abrufen |
+| **Postfächer (optional)** | 7 | Weitere, NICHT-Google-Konten per IMAP/SMTP (GMX, Web.de, Outlook, eigene Domain) durchsuchen/lesen/senden/antworten -- siehe unten |
 
 Google-Fehler (fehlender Scope, abgelaufene Berechtigung, API nicht
 aktiviert, ...) kommen 1:1 mit Googles eigener Fehlermeldung zurück, statt
@@ -163,15 +164,44 @@ geraten zu werden.
 
 ## Mail über eine andere Absenderadresse schicken
 
-Wer bei Gmail mehrere "Senden als"-Adressen eingerichtet hat (Gmail ->
-Einstellungen -> Konten -> "Senden als"), kann den optionalen Parameter
-`von` bei `google_mail_senden`/`google_mail_antworten`/
-`google_mail_entwurf_erstellen` nutzen, um eine dieser Adressen statt der
-Hauptadresse zu verwenden. `google_mail_absender_liste` zeigt, welche
-Adressen konfiguriert und **verifiziert** sind -- nur verifizierte Adressen
-funktionieren tatsächlich, alles andere ignoriert Gmail und nimmt
-automatisch die Hauptadresse. Neue "Senden als"-Adressen selbst einrichten
-geht weiterhin nur direkt in den Gmail-Einstellungen, nicht über dieses Tool.
+**Zwei unterschiedliche Mechanismen, leicht zu verwechseln:**
+
+**a) Gmail-eigene "Senden als"-Aliase** -- wer bei Gmail mehrere
+"Senden als"-Adressen eingerichtet hat (Gmail -> Einstellungen -> Konten ->
+"Senden als"), kann den optionalen Parameter `von` bei
+`google_mail_senden`/`google_mail_antworten`/`google_mail_entwurf_erstellen`
+nutzen, um eine dieser Adressen statt der Hauptadresse zu verwenden.
+`google_mail_absender_liste` zeigt, welche Adressen konfiguriert und
+**verifiziert** sind -- nur verifizierte Adressen funktionieren tatsächlich,
+alles andere ignoriert Gmail und nimmt automatisch die Hauptadresse. Neue
+"Senden als"-Adressen selbst einrichten geht weiterhin nur direkt in den
+Gmail-Einstellungen, nicht über dieses Tool. Der Versand läuft technisch
+weiterhin über Gmail/den einen verbundenen Google-Account.
+
+**b) Echte externe Postfächer per IMAP/SMTP** (`postfach_*`-Tools) -- für
+E-Mail-Adressen bei einem ANDEREN Anbieter (GMX, Web.de, Outlook/Office365,
+eine eigene Domain, ...), die NICHTS mit dem verbundenen Google-Account zu
+tun haben und keine Gmail-Alias-Einrichtung erlauben. Konfiguriert über
+`MAILBOX_<N>_*`-Variablen in der `.env` (siehe `.env.example`) -- komplett
+optional, ohne mindestens `MAILBOX_1_*` sind diese Tools gar nicht erst
+registriert. Für jedes weitere Konto einen neuen Block mit hochgezählter
+Nummer anhängen, keine feste Obergrenze.
+
+| Tool | Zweck |
+|---|---|
+| `postfach_liste()` | Zeigt konfigurierte Postfächer (Name + Adresse) -- der Name ist der `postfach`-Parameter überall sonst |
+| `postfach_ordner_liste(postfach)` | IMAP-Ordnernamen (variieren je Anbieter, z.B. "INBOX" vs. "Gesendet") |
+| `postfach_mails_suchen(postfach, query, ordner, max_ergebnisse)` | Einfache Betreff-/Absender-Suche in einem Ordner, neueste zuerst |
+| `postfach_mail_lesen(postfach, mail_id, ordner)` | Volltext + Anhang-Metadaten einer Mail, markiert NICHT als gelesen |
+| `postfach_anhang_herunterladen(postfach, mail_id, index, ordner)` | Anhang laden (Bilder als echtes Bild) |
+| `postfach_senden(postfach, an, betreff, text, cc, bcc, anhaenge)` | Neue Mail per SMTP verschicken |
+| `postfach_antworten(postfach, mail_id, text, an_alle, ordner)` | Antwort im Thread (korrekte In-Reply-To/References-Kopfzeilen) |
+
+Bewusst NICHT dabei: Labels, Entwürfe, Papierkorb -- Gmail-spezifische
+Konzepte ohne sauberes, universelles IMAP-Äquivalent. `PASSWORD` ist bei den
+meisten Anbietern ein **App-Passwort**, nicht das normale Login-Passwort.
+Jeder Tool-Aufruf öffnet eine frische IMAP-/SMTP-Verbindung und schließt sie
+danach wieder (kein dauerhaft offener Connection-Pool).
 
 ## Bestätigungspflicht beim Löschen
 
