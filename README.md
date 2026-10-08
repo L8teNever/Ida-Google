@@ -149,7 +149,7 @@ hier nur eine Übersicht nach Dienst gruppiert.
 | Verbindung | `google_verbindung_status` | Prüft, ob überhaupt mit Google verbunden |
 | **Tasks** | 5 | Listen/Aufgaben lesen, anlegen, erledigt markieren, löschen |
 | **Kontakte** | 5 | Lesen, anlegen, **bearbeiten, löschen** |
-| **Kalender** | 4 | Termine lesen/anlegen/ändern/löschen, **Teilnehmer einladen** (echte Google-Einladungsmail) |
+| **Kalender** | 4 | Termine lesen/anlegen/ändern/löschen, **Teilnehmer einladen**, **Event-Farbe** (`farbe`: Google colorId 1–11 oder Name, z.B. `tomate`) |
 | **Gmail** | 14 | Suchen, lesen, **senden mit CC/BCC/Anhängen/wählbarem Absender**, **im Thread antworten**, Anhänge herunterladen (Bilder als echtes Bild), Labels lesen/erstellen/anwenden/entfernen, **Entwürfe** anlegen/lesen/senden, in den Papierkorb verschieben, konfigurierte "Senden als"-Adressen auflisten |
 | **Docs** | 7 | Anlegen, lesen, Text anhängen/an Position einfügen/löschen, **Suchen & Ersetzen**, Fett/Kursiv/Unterstrichen |
 | **Sheets** | 8 | Anlegen, Bereich lesen/schreiben/anhängen/leeren, **Tabellenblatt anlegen/umbenennen/löschen** |
