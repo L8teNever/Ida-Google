@@ -68,5 +68,20 @@ class MiscTest(unittest.TestCase):
         self.assertIn("https://www.googleapis.com/auth/googlehealth.sleep.writeonly", SCOPES)
 
 
+class ScopedTokenTest(unittest.TestCase):
+    def test_health_nutzt_eingeschraenkten_token(self):
+        from app.services import health
+
+        aufrufe = []
+
+        class FakeClient:
+            def request(self, methode, url, **kw):
+                aufrufe.append(kw.get("scopes"))
+                return {}
+
+        health._anfrage(FakeClient(), "GET", "http://x")
+        self.assertEqual(aufrufe, [SCOPES])
+
+
 if __name__ == "__main__":
     unittest.main()

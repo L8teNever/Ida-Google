@@ -56,9 +56,12 @@ class GoogleApiClient:
         *,
         params: dict[str, Any] | None = None,
         json_body: Any = None,
+        scopes: list[str] | None = None,
     ) -> Any:
+        """scopes: optional -- Token nur mit diesen Scopes verwenden (z.B. fuer
+        die Google Health API, die Tokens mit fremden Scopes ablehnt)."""
         try:
-            access_token = self._google.get_access_token()
+            access_token = self._google.get_access_token(scopes)
         except GoogleAuthError as exc:
             raise GoogleApiError(str(exc)) from exc
 

@@ -130,6 +130,13 @@ def _pfad(datentyp: str) -> str:
     return f"{_BASE}/users/me/dataTypes/{datentyp}/dataPoints"
 
 
+def _anfrage(client: GoogleApiClient, methode: str, url: str, **kwargs: Any) -> Any:
+    """Die Health API lehnt Tokens ab, die auch fremde Scopes (Gmail, Kalender,
+    ...) enthalten ("DISALLOWED_OAUTH_SCOPES"). Deshalb immer ein Token nur mit
+    den Health-Scopes benutzen."""
+    return client.request(methode, url, scopes=SCOPES, **kwargs)
+
+
 def register_tools(mcp, client: GoogleApiClient) -> None:
     @mcp.tool()
     def google_health_datentypen() -> dict:
@@ -172,7 +179,7 @@ def register_tools(mcp, client: GoogleApiClient) -> None:
             params["pageToken"] = seitentoken
         if quelle and quelle != "alle":
             params["dataSourceFamily"] = f"users/me/dataSourceFamilies/{quelle}"
-        return client.request("GET", _pfad(datentyp), params=params) or {}
+        return _anfrage(client, "GET", _pfad(datentyp), params=params) or {}
 
     @mcp.tool()
     def google_health_datenpunkt_lesen(name: str) -> dict:
@@ -186,7 +193,7 @@ def register_tools(mcp, client: GoogleApiClient) -> None:
             raise GoogleApiError(
                 "name muss die Form users/me/dataTypes/<typ>/dataPoints/<id> haben."
             )
-        return client.request("GET", f"{_BASE}/{name}") or {}
+        return _anfrage(client, "GET", f"{_BASE}/{name}") or {}
 
     @mcp.tool()
     def google_health_schlaf_abgleich(filter: str = "", seitengroesse: int = 0, seitentoken: str = "") -> dict:
@@ -205,7 +212,7 @@ def register_tools(mcp, client: GoogleApiClient) -> None:
         if seitentoken:
             params["pageToken"] = seitentoken
         url = f"{_pfad('sleep')}:reconcile"
-        return client.request("GET", url, params=params) or {}
+        return _anfrage(client, "GET", url, params=params) or {}
 
     @mcp.tool()
     def google_health_schlaf_schreiben(start: str, ende: str, stufen: list[dict] | None = None) -> dict:
@@ -221,7 +228,7 @@ def register_tools(mcp, client: GoogleApiClient) -> None:
         seine Gesundheitsdaten. Antwort enthaelt eine Operation von Google.
         """
         body = baue_schlaf_datenpunkt(start, ende, stufen)
-        return client.request("POST", _pfad("sleep"), json_body=body) or {}
+        return _anfrage(client, "POST", _pfad("sleep"), json_body=body) or {}
 
     @mcp.tool()
     def google_health_datenpunkt_schreiben(datentyp: str, datenpunkt: str) -> dict:
@@ -242,7 +249,7 @@ def register_tools(mcp, client: GoogleApiClient) -> None:
             raise GoogleApiError(f"datenpunkt ist kein gueltiges JSON: {exc}") from exc
         if not isinstance(body, dict):
             raise GoogleApiError("datenpunkt muss ein JSON-Objekt sein.")
-        return client.request("POST", _pfad(datentyp), json_body=body) or {}
+        return _anfrage(client, "POST", _pfad(datentyp), json_body=body) or {}
 
     @mcp.tool()
     def google_health_datenpunkt_aendern(name: str, datenpunkt: str) -> dict:
@@ -263,7 +270,7 @@ def register_tools(mcp, client: GoogleApiClient) -> None:
             body = json.loads(datenpunkt)
         except ValueError as exc:
             raise GoogleApiError(f"datenpunkt ist kein gueltiges JSON: {exc}") from exc
-        return client.request("PATCH", f"{_BASE}/{name}", json_body=body) or {}
+        return _anfrage(client, "PATCH", f"{_BASE}/{name}", json_body=body) or {}
 
     @mcp.tool()
     def google_health_datenpunkte_loeschen(datentyp: str, namen: list[str], bestaetigt: bool = False) -> dict:
@@ -281,7 +288,7 @@ def register_tools(mcp, client: GoogleApiClient) -> None:
         if not namen:
             raise GoogleApiError("namen ist leer.")
         url = f"{_pfad(datentyp)}:batchDelete"
-        return client.request("POST", url, json_body={"names": namen}) or {"ausgefuehrt": True}
+        return _anfrage(client, "POST", url, json_body={"names": namen}) or {"ausgefuehrt": True}
 
     @mcp.tool()
     def google_health_api_aufruf(methode: str, pfad: str, params: str = "", body: str = "", bestaetigt: bool = False) -> dict:
@@ -313,4 +320,4 @@ def register_tools(mcp, client: GoogleApiClient) -> None:
             payload = json.loads(body) if body else None
         except ValueError as exc:
             raise GoogleApiError(f"params/body ist kein gueltiges JSON: {exc}") from exc
-        return client.request(methode, f"{_BASE}/{pfad}", params=query, json_body=payload) or {"ausgefuehrt": True}
+        return _anfrage(client, methode, f"{_BASE}/{pfad}", params=query, json_body=payload) or {"ausgefuehrt": True}

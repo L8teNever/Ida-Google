@@ -62,6 +62,10 @@ class GoogleAuthManager:
         # jedem Tool-Aufruf gegen Google getauscht werden muss.
         self._access_token: str | None = None
         self._access_token_expiry: float = 0.0
+        # Zusaetzlicher Cache fuer eingeschraenkte Tokens (nur bestimmte Scopes),
+        # Schluessel = sortierte Scopes. Noetig fuer APIs wie die Google Health
+        # API, die Tokens mit fremden Scopes (Gmail, Kalender, ...) ablehnen.
+        self._scoped_tokens: dict[tuple[str, ...], tuple[str, float]] = {}
 
     # -- Schritt 1: Authorize-URL --------------------------------------
 
@@ -134,7 +138,12 @@ class GoogleAuthManager:
         with self._lock:
             return self._load() is not None
 
-    def get_access_token(self) -> str:
+    def get_access_token(self, scopes: list[str] | None = None) -> str:
+        """Frischer Access-Token. Mit scopes wird ein auf genau diese Scopes
+        eingeschraenkter Token besorgt (Teilmenge der bei der Anmeldung
+        gewaehrten Scopes, ohne erneute Zustimmung noetig)."""
+        if scopes:
+            return self._get_scoped_access_token(scopes)
         with self._lock:
             if self._access_token and time.monotonic() < self._access_token_expiry:
                 return self._access_token
@@ -162,6 +171,37 @@ class GoogleAuthManager:
             self._access_token = data["access_token"]
             self._access_token_expiry = time.monotonic() + float(data.get("expires_in", 0)) - _TOKEN_EXPIRY_SAFETY_MARGIN_SECONDS
             return self._access_token
+
+    def _get_scoped_access_token(self, scopes: list[str]) -> str:
+        key = tuple(sorted(scopes))
+        with self._lock:
+            cached = self._scoped_tokens.get(key)
+            if cached and time.monotonic() < cached[1]:
+                return cached[0]
+
+            stored = self._load()
+            if stored is None:
+                raise GoogleAuthError(
+                    "Noch nicht mit Google verbunden -- einmalig die "
+                    "/authorize-Seite des Auth-Ports aufrufen und Zugriff "
+                    "erlauben."
+                )
+
+            response = requests.post(
+                _TOKEN_URL,
+                data={
+                    "refresh_token": stored["refresh_token"],
+                    "client_id": self._settings.google_client_id,
+                    "client_secret": self._settings.google_client_secret,
+                    "grant_type": "refresh_token",
+                    "scope": " ".join(key),
+                },
+                timeout=15,
+            )
+            data = self._parse_token_response(response)
+            expiry = time.monotonic() + float(data.get("expires_in", 0)) - _TOKEN_EXPIRY_SAFETY_MARGIN_SECONDS
+            self._scoped_tokens[key] = (data["access_token"], expiry)
+            return data["access_token"]
 
     # -- Intern -------------------------------------------------------------
 
