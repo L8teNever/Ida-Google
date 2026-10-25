@@ -5,3 +5,7 @@ __pycache__/
 .venv/
 .vscode/
 google_token.json
+
+# Huawei-Import-Ausgabe (Gesundheitsdaten, nie committen)
+huawei_out/
+*.zip

@@ -192,6 +192,28 @@ Ernährung, Profil und Einstellungen an (`googlehealth.*.readonly/.writeonly`).
 - **Nach dem Update einmal `/authorize` neu aufrufen**, damit die neuen
   Health-Scopes zugestimmt werden.
 
+### Huawei-Health-Export importieren (`scripts/huawei_import.py`)
+
+Liest den (AES-verschlüsselten) Huawei-Health-ZIP-Export, schreibt **alle**
+Daten als CSV-Archiv und importiert die von Google schreibbaren Typen per MCP
+über die `google_health_*`-Tools dieses Servers.
+
+```bash
+pip install pyzipper 'mcp>=1.28,<2'
+python scripts/huawei_import.py export HUAWEI_HEALTH_xxx.zip --passwort '...' --ziel huawei_out
+python scripts/huawei_import.py import huawei_out --mcp-url http://127.0.0.1:4569/mcp --token "$MCP_AUTH_TOKEN" --trocken
+python scripts/huawei_import.py import huawei_out --mcp-url http://127.0.0.1:4569/mcp --token "$MCP_AUTH_TOKEN"
+```
+
+- Importiert werden: Schlaf (Nächte mit Phasen + Nickerchen), Trainings,
+  Gewicht, Größe, Trinkmenge. Puls, SpO₂, Schritte, Distanz, Ruhepuls und
+  Kalorien lehnt Google für Drittanbieter ab („Create is not supported“) --
+  die stehen nur im CSV-Archiv (`huawei_out/csv/`).
+- Vorhandene Datenpunkte werden vorher gelesen und übersprungen (Schlaf:
+  alle Quellen, sonst eigene), `import_status.json` erlaubt Fortsetzen nach
+  Abbruch, Fehler landen in `import_fehler.jsonl`.
+- Filter: `--typen sleep exercise`, `--von 2024-01-01`, `--bis ...`, `--max 5`.
+
 ## Bestätigungspflicht beim Löschen
 
 Jedes Tool, das Daten unwiderruflich entfernt (Name endet auf
