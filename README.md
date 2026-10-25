@@ -2,8 +2,8 @@
 
 Ein eigenständiger MCP-Server (Model Context Protocol) für Google-Dienste --
 getrennt von Ida-Untis, Ida-Telegram und Ida-Memory, eigenes Repo, eigener
-Container. Gibt Claude 54 Werkzeuge für Google Tasks, Kontakte, Kalender,
-Gmail, Docs, Sheets, Slides, Chat und Meet, mit mehr Diensten in kommenden
+Container. Gibt Claude 64 Werkzeuge für Google Tasks, Kontakte, Kalender,
+Gmail, Docs, Sheets, Slides, Chat, Meet und Google Health, mit mehr Diensten in kommenden
 Ausbaustufen (siehe [Fahrplan](#fahrplan) unten). Ziel ist, ueber die Zeit
 moeglichst alles abzudecken, was die jeweilige Google-API hergibt -- nicht
 nur eine kleine Grundauswahl.
@@ -70,7 +70,7 @@ anlegen). Kurzfassung: neues Projekt -> Zustimmungsbildschirm (extern, dich
 selbst als Testnutzer) -> benötigte APIs aktivieren (aktuell: **Google Tasks
 API**, **People API**, **Google Calendar API**, **Gmail API**, **Google Keep
 API**, **Google Docs API**, **Google Sheets API**, **Google Slides API**,
-**Google Chat API**, **Google Meet API**) -> OAuth-Client vom Typ
+**Google Chat API**, **Google Meet API**, **Google Health API**) -> OAuth-Client vom Typ
 "Webanwendung" mit der Redirect-URI `https://auth.deine-domain.de/oauth/callback`.
 
 **Nach jedem Update, das neue Google-Dienste oder zusätzliche Berechtigungen
@@ -139,7 +139,7 @@ claude.ai -> Einstellungen -> Connectors -> Add custom connector -> als URL:
 https://google.deine-domain.de/mcp?token=<MCP_AUTH_TOKEN>
 ```
 
-## Verfügbare MCP-Tools (55)
+## Verfügbare MCP-Tools (64)
 
 Vollständige Parameter/Docstrings direkt im Code (`app/services/*.py`) --
 hier nur eine Übersicht nach Dienst gruppiert.
@@ -156,6 +156,7 @@ hier nur eine Übersicht nach Dienst gruppiert.
 | **Slides** | 5 | Anlegen, lesen, Titel+Text-Folie hinzufügen/**löschen/verschieben** |
 | **Chat** | 4 | Räume auflisten, **Raum erstellen**, Nachricht senden, Nachrichten lesen |
 | **Meet** | 2 | Meeting-Raum anlegen (Beitritts-Link), Details abrufen |
+| **Google Health** | 9 | Datentypen auflisten, Datenpunkte (Schlaf, Puls, Schritte, Gewicht, ...) lesen, **Schlaf mit Phasen schreiben**, beliebige Typen anlegen/ändern, **löschen** (mit `bestaetigt`), Schlaf-Abgleich, allgemeiner API-Aufruf (`google_health_api_aufruf`, z.B. Profil, Roll-ups) |
 
 Google-Fehler (fehlender Scope, abgelaufene Berechtigung, API nicht
 aktiviert, ...) kommen 1:1 mit Googles eigener Fehlermeldung zurück, statt
@@ -173,10 +174,29 @@ funktionieren tatsächlich, alles andere ignoriert Gmail und nimmt
 automatisch die Hauptadresse. Neue "Senden als"-Adressen selbst einrichten
 geht weiterhin nur direkt in den Gmail-Einstellungen, nicht über dieses Tool.
 
+## Google Health API
+
+Nachfolger der Fitbit Web API (`https://health.googleapis.com/v4`, Doku:
+[developers.google.com/health](https://developers.google.com/health)). In der
+Google Cloud Console die **Google Health API** aktivieren. Das Modul fordert
+Lese- und Schreib-Scopes für Schlaf, Aktivität/Fitness, Gesundheitswerte,
+Ernährung, Profil und Einstellungen an (`googlehealth.*.readonly/.writeonly`).
+
+- Zeiten beim Schreiben als ISO 8601 **mit Zeitzone**
+  (`2024-10-31T01:55:00+01:00`) -- UTC und Offset berechnet das Tool.
+- Geschrieben/geändert/gelöscht werden können nur Daten, die dieser
+  OAuth-Client selbst angelegt hat.
+- Welche Datentypen Dritte schreiben dürfen, bestimmt Google (Stand der
+  Release Notes: u.a. Schlaf; Herzfrequenz nur lesend). Fehler kommen mit
+  Googles Originalmeldung zurück.
+- **Nach dem Update einmal `/authorize` neu aufrufen**, damit die neuen
+  Health-Scopes zugestimmt werden.
+
 ## Bestätigungspflicht beim Löschen
 
 Jedes Tool, das Daten unwiderruflich entfernt (Name endet auf
-`_loeschen`, dazu `google_mail_papierkorb` und `google_sheet_bereich_leeren`),
+`_loeschen`, dazu `google_mail_papierkorb`, `google_sheet_bereich_leeren` und
+`google_health_datenpunkte_loeschen`),
 hat einen Parameter `bestaetigt` (Standard `False`). Ohne `bestaetigt=True`
 passiert **technisch nichts** -- das Tool gibt nur einen Hinweis zurück, was
 gelöscht würde. Claude ist angewiesen, immer erst im Chat nachzufragen und

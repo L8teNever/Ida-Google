@@ -25,7 +25,7 @@ from app.auth import BearerAuthMiddleware
 from app.config import load_settings
 from app.google_auth import GoogleAuthManager
 from app.google_client import GoogleApiClient
-from app.services import calendar, chat, contacts, docs, gmail, meet, sheets, slides, tasks
+from app.services import calendar, chat, contacts, docs, gmail, health, meet, sheets, slides, tasks
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s"
@@ -41,7 +41,7 @@ log = logging.getLogger("ida-google")
 # die Anmeldung fuer alle anderen Dienste gleich mit. Modul bleibt im Code
 # (app/services/notes.py) fuer den Fall, dass sich das aendert (z.B. mit
 # einem Workspace-Konto) -- dann hier wieder eintragen.
-_SERVICE_MODULES = [tasks, contacts, calendar, gmail, docs, sheets, slides, chat, meet]
+_SERVICE_MODULES = [tasks, contacts, calendar, gmail, docs, sheets, slides, chat, meet, health]
 ALL_SCOPES = sorted({scope for module in _SERVICE_MODULES for scope in module.SCOPES})
 
 settings = load_settings()
@@ -52,7 +52,8 @@ mcp = FastMCP(
     "Ida-Google",
     instructions=(
         "Werkzeuge fuer Google-Dienste (Tasks, Kontakte, Kalender, Gmail, "
-        "Docs, Sheets, Slides, Chat, Meet -- weitere kommen dazu) -- alle "
+        "Docs, Sheets, Slides, Chat, Meet, Google Health -- weitere kommen "
+        "dazu) -- alle "
         "fuer genau den einen Google-Account, der einmalig ueber den "
         "separaten Auth-Port verbunden wurde. google_verbindung_status "
         "zuerst aufrufen, wenn ein Tool einen Verbindungsfehler meldet -- "
@@ -70,7 +71,13 @@ mcp = FastMCP(
         "bestaetigt=True wiederholen. AUSNAHME: google_termin_loeschen "
         "(Kalender) braucht keine Bestaetigung und darf direkt ausgefuehrt "
         "werden -- das ist so gewuenscht, damit Terminaenderungen schnell "
-        "gehen."
+        "gehen. "
+        "GOOGLE HEALTH (google_health_*): Gesundheitsdaten (Schlaf, Puls, "
+        "Schritte, Gewicht, ...) ueber die Google Health API. Erst "
+        "google_health_datentypen fuer die Typ-IDs. Lesen ist frei; "
+        "Schreiben/Aendern veraendert Gesundheitsdaten des Nutzers -- vorher "
+        "bestaetigen lassen. Schlaf eintragen mit google_health_schlaf_schreiben "
+        "(Zeiten ISO 8601 mit Zeitzone, z.B. 2024-10-31T01:55:00+01:00)."
     ),
     host=settings.mcp_host,
     port=settings.mcp_port,
