@@ -61,6 +61,14 @@ DATENTYPEN: dict[str, list[str]] = {
     "Nur schreibbar (hier nicht freigeschaltet)": [
         "menstrual-period", "ovulation-test", "moods", "symptoms",
     ],
+    # Getestet am 2026-10-25 mit echtem Create-Aufruf:
+    "SCHREIBEN ERLAUBT (getestet)": [
+        "sleep", "exercise", "weight", "height", "hydration-log",
+    ],
+    "SCHREIBEN VON GOOGLE ABGELEHNT (nur lesen)": [
+        "heart-rate", "oxygen-saturation", "steps", "distance",
+        "daily-resting-heart-rate", "active-energy-burned",
+    ],
 }
 
 _STUFEN = {"LIGHT", "DEEP", "REM", "AWAKE"}
