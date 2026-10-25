@@ -522,9 +522,9 @@ class Mcp:
                     return daten
                 letzter = str(daten)
                 # Nur voruebergehende Fehler wiederholen (Quota, 5xx, Netz)
-                voruebergehend = ("429", "RESOURCE_EXHAUSTED", "UNAVAILABLE", "HTTP 5", "Timeout",
-                                  "timed out", "Rate", "quota", "Quota", "internal", "INTERNAL")
-                if not any(x in letzter for x in voruebergehend):
+                voruebergehend = ("429", "resource_exhausted", "unavailable", "http 5", "timeout",
+                                  "timed out", "rate", "quota", "internal", "deadline", "backend")
+                if not any(x in letzter.lower() for x in voruebergehend):
                     break
             except Exception as exc:  # Netzwerk/Session
                 letzter = f"{type(exc).__name__}: {exc}"
