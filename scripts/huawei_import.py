@@ -363,11 +363,26 @@ def cmd_export(args) -> None:
     stat["gewicht"] = _csv(ziel / "csv/gewicht.csv", ["zeit", "kg", "koerperfett_prozent"],
                            ((iso(ms, tz), kg, bf or "") for ms, (tz, kg, bf) in sorted(gewicht.items())))
 
+    # Huawei speichert Groessen-Eintraege teils mit falscher Zeitzone (+0800);
+    # deshalb die Zeitzone des zeitlich naechsten Ruhepuls-Eintrags nehmen.
+    import bisect
+
+    tz_ref = sorted((ms, tz) for ms, (tz, _) in ruhe.items())
+    tz_ms = [x[0] for x in tz_ref]
+
+    def tz_nahe(ms: int, fallback: str | None) -> str | None:
+        if not tz_ref:
+            return fallback
+        i = min(bisect.bisect_left(tz_ms, ms), len(tz_ref) - 1)
+        if i > 0 and abs(tz_ms[i - 1] - ms) < abs(tz_ms[i] - ms):
+            i -= 1
+        return tz_ref[i][1]
+
     groesse = {}
     for r, p in punkte([400027]):
         v = _wert(p)
         if isinstance(v, dict) and 100 <= float(v.get("userHeight", 0)) <= 250:
-            groesse[p["startTime"]] = (r.get("timeZone"), float(v["userHeight"]))
+            groesse[p["startTime"]] = (tz_nahe(p["startTime"], r.get("timeZone")), float(v["userHeight"]))
     stat["groesse"] = _csv(ziel / "csv/groesse.csv", ["zeit", "cm"],
                            ((iso(ms, tz), cm) for ms, (tz, cm) in sorted(groesse.items())))
 
