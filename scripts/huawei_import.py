@@ -383,6 +383,12 @@ def cmd_export(args) -> None:
         v = _wert(p)
         if isinstance(v, dict) and 100 <= float(v.get("userHeight", 0)) <= 250:
             groesse[p["startTime"]] = (tz_nahe(p["startTime"], r.get("timeZone")), float(v["userHeight"]))
+    # Google behaelt bei kurz aufeinanderfolgenden Groessen nur einen Wert --
+    # pro Tag nur den letzten Eintrag (Korrekturen wie 184 -> 179 cm) behalten.
+    pro_tag: dict[str, int] = {}
+    for ms, (tz, _) in sorted(groesse.items()):
+        pro_tag[iso(ms, tz)[:10]] = ms
+    groesse = {ms: groesse[ms] for ms in pro_tag.values()}
     stat["groesse"] = _csv(ziel / "csv/groesse.csv", ["zeit", "cm"],
                            ((iso(ms, tz), cm) for ms, (tz, cm) in sorted(groesse.items())))
 
