@@ -25,7 +25,7 @@ from app.auth import BearerAuthMiddleware
 from app.config import load_settings
 from app.google_auth import GoogleAuthManager
 from app.google_client import GoogleApiClient
-from app.services import calendar, chat, contacts, docs, gmail, health, meet, sheets, slides, tasks
+from app.services import calendar, chat, contacts, docs, drive, gmail, health, meet, sheets, slides, tasks
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s"
@@ -41,7 +41,7 @@ log = logging.getLogger("ida-google")
 # die Anmeldung fuer alle anderen Dienste gleich mit. Modul bleibt im Code
 # (app/services/notes.py) fuer den Fall, dass sich das aendert (z.B. mit
 # einem Workspace-Konto) -- dann hier wieder eintragen.
-_SERVICE_MODULES = [tasks, contacts, calendar, gmail, docs, sheets, slides, chat, meet, health]
+_SERVICE_MODULES = [tasks, contacts, calendar, gmail, docs, drive, sheets, slides, chat, meet, health]
 ALL_SCOPES = sorted({scope for module in _SERVICE_MODULES for scope in module.SCOPES})
 
 settings = load_settings()

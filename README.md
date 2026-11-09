@@ -69,7 +69,7 @@ Ausführliche Schritt-für-Schritt-Anleitung steht direkt in `.env.example`
 anlegen). Kurzfassung: neues Projekt -> Zustimmungsbildschirm (extern, dich
 selbst als Testnutzer) -> benötigte APIs aktivieren (aktuell: **Google Tasks
 API**, **People API**, **Google Calendar API**, **Gmail API**, **Google Keep
-API**, **Google Docs API**, **Google Sheets API**, **Google Slides API**,
+API**, **Google Docs API**, **Google Sheets API**, **Google Slides API**, **Google Drive API**,
 **Google Chat API**, **Google Meet API**, **Google Health API**) -> OAuth-Client vom Typ
 "Webanwendung" mit der Redirect-URI `https://auth.deine-domain.de/oauth/callback`.
 
